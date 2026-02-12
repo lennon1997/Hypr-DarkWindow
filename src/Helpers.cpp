@@ -3,6 +3,7 @@
 #include <exception>
 #include <unordered_set>
 #include <ranges>
+#include <vector>
 
 #include <hyprland/src/Compositor.hpp>
 #include <hyprutils/utils/ScopeGuard.hpp>
@@ -191,13 +192,12 @@ ShaderHolder::ShaderHolder(const std::string& source)
 
     const auto& TEXVERTSRC = g_pHyprOpenGL->m_shaders->TEXVERTSRC;
 
-    for (auto& [id, fragFile] : {
-        std::pair{ SH_FRAG_RGBA,    "rgba.frag"   },
-                 { SH_FRAG_RGBX,    "rgbx.frag"   },
-                 { SH_FRAG_EXT,     "ext.frag"    },
-                 { SH_FRAG_CM_RGBA, "CMrgba.frag" },
-                 { SH_FRAG_CM_RGBX, "CMrgbx.frag" },
-        }) {
+    const std::vector<std::pair<ePreparedFragmentShader, const char*>> shaderTargets = {
+        {SH_FRAG_PASSTHRURGBA, "passthru.frag"},
+        {SH_FRAG_EXT, "ext.frag"},
+    };
+
+    for (auto& [id, fragFile] : shaderTargets) {
         // skip CM s if hyprland skipped them too
         if (!g_pHyprOpenGL->m_shaders->frag[id]) continue;
 
