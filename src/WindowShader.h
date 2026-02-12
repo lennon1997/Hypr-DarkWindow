@@ -28,8 +28,8 @@ public:
 private:
     std::map<std::string, UP<ShaderConfig>> m_Shaders;
 
-    std::map<PHLWINDOW, ShaderConfig*> m_RuleShadedWindows;
-    std::map<PHLWINDOW, ShaderConfig*> m_DispatchShadedWindows;
+    std::map<Desktop::View::CWindow*, ShaderConfig*> m_RuleShadedWindows;
+    std::map<Desktop::View::CWindow*, ShaderConfig*> m_DispatchShadedWindows;
 
     std::optional<ShaderConfig*> m_ShadersSwapped;
 };

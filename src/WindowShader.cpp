@@ -71,9 +71,12 @@ static const std::map<std::string, std::tuple<std::string, Uniforms, IntroducesT
 std::optional<ShaderConfig*>& WindowShader::OnRenderWindowPre(PHLWINDOW window)
 {
     m_ShadersSwapped.reset();
+    if (!window) return m_ShadersSwapped;
 
-    auto ruleShader = m_RuleShadedWindows.find(window);
-    auto dispatchShader = m_DispatchShadedWindows.find(window);
+    auto* windowKey = window.get();
+
+    auto ruleShader = m_RuleShadedWindows.find(windowKey);
+    auto dispatchShader = m_DispatchShadedWindows.find(windowKey);
     if (ruleShader != m_RuleShadedWindows.end() && dispatchShader != m_DispatchShadedWindows.end())
     {
         if (ruleShader->second->ID != dispatchShader->second->ID)
@@ -139,6 +142,7 @@ void WindowShader::ShadeIfMatches(PHLWINDOW window)
 {
     // for some reason, some events (currently `activeWindow`) sometimes pass a null pointer
     if (!window) return;
+    auto* windowKey = window.get();
 
     std::optional<std::string> shader;
     auto& props = window->m_ruleApplicator->m_otherProps.props;
@@ -146,16 +150,16 @@ void WindowShader::ShadeIfMatches(PHLWINDOW window)
     if (const auto& it = props.find(m_RuleShade); it != props.end())
         shader = it->second->effect;
 
-    auto windowIt = m_RuleShadedWindows.find(window);
+    auto windowIt = m_RuleShadedWindows.find(windowKey);
     std::optional<std::string> currentShader;
     if (windowIt != m_RuleShadedWindows.end()) currentShader = windowIt->second->ID;
 
     if (shader != currentShader)
     {
         if (shader)
-            m_RuleShadedWindows[window] = EnsureShader(*shader);
+            m_RuleShadedWindows[windowKey] = EnsureShader(*shader);
         else
-            m_RuleShadedWindows.erase(window);
+            m_RuleShadedWindows.erase(windowKey);
 
         g_pHyprRenderer->damageWindow(window);
     }
@@ -166,23 +170,26 @@ void WindowShader::ToggleShade(PHLWINDOW window, const std::string& shader)
 {
     if (!window)
         return;
+    auto* windowKey = window.get();
 
-    auto windowIt = m_DispatchShadedWindows.find(window);
+    auto windowIt = m_DispatchShadedWindows.find(windowKey);
     std::optional<std::string> currentShader;
     if (windowIt != m_DispatchShadedWindows.end()) currentShader = windowIt->second->ID;
 
     if (std::optional(shader) != currentShader)
-        m_DispatchShadedWindows[window] = EnsureShader(shader);
+        m_DispatchShadedWindows[windowKey] = EnsureShader(shader);
     else
-        m_DispatchShadedWindows.erase(window);
+        m_DispatchShadedWindows.erase(windowKey);
 
     g_pHyprRenderer->damageWindow(window);
 }
 
 void WindowShader::ForgetWindow(PHLWINDOW window)
 {
-    m_RuleShadedWindows.erase(window);
-    m_DispatchShadedWindows.erase(window);
+    if (!window) return;
+    auto* windowKey = window.get();
+    m_RuleShadedWindows.erase(windowKey);
+    m_DispatchShadedWindows.erase(windowKey);
 }
 
 void WindowShader::ReshadeWindows()
