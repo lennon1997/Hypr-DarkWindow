@@ -57,6 +57,8 @@ struct ShaderHolder
     };
 
     std::map<ePreparedFragmentShader, CustomShader> Shaders;
+    std::map<uint8_t, CustomShader> VariantShaders;
+    SP<CShader> SurfaceVariantShader;
 
     ShaderHolder(const std::string& source);
     ~ShaderHolder();

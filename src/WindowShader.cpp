@@ -85,10 +85,25 @@ std::optional<ShaderConfig*>& WindowShader::OnRenderWindowPre(PHLWINDOW window)
         m_ShadersSwapped = ruleShader->second;
 
     if (m_ShadersSwapped) {
-        (*m_ShadersSwapped)->CompiledShaders->ApplyArgs((*m_ShadersSwapped)->Args);
+        auto& compiled = (*m_ShadersSwapped)->CompiledShaders;
+        compiled->ApplyArgs((*m_ShadersSwapped)->Args);
 
-        for (auto& [id, s] : (*m_ShadersSwapped)->CompiledShaders->Shaders)
+        if (compiled->SurfaceVariantShader) {
+            for (const auto& [features, _] : g_pHyprOpenGL->m_shaders->fragVariants) {
+                auto& custom = compiled->VariantShaders[features];
+                if (!custom.Shader)
+                    custom.Shader = compiled->SurfaceVariantShader;
+            }
+        }
+
+        for (auto& [id, s] : compiled->Shaders)
             std::swap(s.Shader, g_pHyprOpenGL->m_shaders->frag[id]);
+
+        for (auto& [features, s] : compiled->VariantShaders) {
+            auto it = g_pHyprOpenGL->m_shaders->fragVariants.find(features);
+            if (it == g_pHyprOpenGL->m_shaders->fragVariants.end()) continue;
+            std::swap(s.Shader, it->second);
+        }
     }
 
     return m_ShadersSwapped;
@@ -98,8 +113,16 @@ void WindowShader::OnRenderWindowPost()
 {
     if (m_ShadersSwapped)
     {
-        for (auto& [id, s] : (*m_ShadersSwapped)->CompiledShaders->Shaders)
+        auto& compiled = (*m_ShadersSwapped)->CompiledShaders;
+
+        for (auto& [id, s] : compiled->Shaders)
             std::swap(s.Shader, g_pHyprOpenGL->m_shaders->frag[id]);
+
+        for (auto& [features, s] : compiled->VariantShaders) {
+            auto it = g_pHyprOpenGL->m_shaders->fragVariants.find(features);
+            if (it == g_pHyprOpenGL->m_shaders->fragVariants.end()) continue;
+            std::swap(s.Shader, it->second);
+        }
 
         m_ShadersSwapped.reset();
     }

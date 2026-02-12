@@ -134,7 +134,22 @@ void ShaderHolder::PrimeUniforms(const Uniforms& args)
     g_pHyprRenderer->makeEGLCurrent();
     Hyprutils::Utils::CScopeGuard _egl([&] { g_pHyprRenderer->unsetEGL(); });
 
+    std::unordered_set<GLuint> primedPrograms;
+
     for (auto& [_, s] : Shaders) {
+        if (!s.Shader || !primedPrograms.emplace(s.Shader->program()).second) continue;
+        for (auto& [name, _] : args)
+        {
+            if (s.UniformLocations.contains(name)) continue;
+
+            GLint loc = glGetUniformLocation(s.Shader->program(), name.c_str());
+            if (loc == -1) throw efmt("Shader failed to find the uniform: {}", name);
+            s.UniformLocations[name] = loc;
+        }
+    }
+
+    for (auto& [_, s] : VariantShaders) {
+        if (!s.Shader || !primedPrograms.emplace(s.Shader->program()).second) continue;
         for (auto& [name, _] : args)
         {
             if (s.UniformLocations.contains(name)) continue;
@@ -151,12 +166,42 @@ void ShaderHolder::ApplyArgs(const Uniforms& args) noexcept
     GLint prog;
     glGetIntegerv(GL_CURRENT_PROGRAM, &prog);
 
+    std::unordered_set<GLuint> updatedPrograms;
+
     for (auto& [_, s] : Shaders)
     {
+        if (!s.Shader || !updatedPrograms.emplace(s.Shader->program()).second) continue;
         glUseProgram(s.Shader->program());
         for (auto& [name, values] : args)
         {
-            GLint loc = s.UniformLocations[name];
+            GLint loc = glGetUniformLocation(s.Shader->program(), name.c_str());
+            if (loc == -1) continue;
+            switch (values.size())
+            {
+            case 1:
+                glUniform1f(loc, values[0]);
+                break;
+            case 2:
+                glUniform2f(loc, values[0], values[1]);
+                break;
+            case 3:
+                glUniform3f(loc, values[0], values[1], values[2]);
+                break;
+            case 4:
+                glUniform4f(loc, values[0], values[1], values[2], values[3]);
+                break;
+            }
+        }
+    }
+
+    for (auto& [_, s] : VariantShaders)
+    {
+        if (!s.Shader || !updatedPrograms.emplace(s.Shader->program()).second) continue;
+        glUseProgram(s.Shader->program());
+        for (auto& [name, values] : args)
+        {
+            GLint loc = glGetUniformLocation(s.Shader->program(), name.c_str());
+            if (loc == -1) continue;
             switch (values.size())
             {
             case 1:
@@ -207,6 +252,15 @@ ShaderHolder::ShaderHolder(const std::string& source)
         Shaders[id].Shader = makeShared<CShader>();
         if (!Shaders[id].Shader->createProgram(TEXVERTSRC, fragSrc, true, true))
             throw efmt("Failed to create Shader: {}, check hyprland logs", fragFile);
+    }
+
+    auto surfaceFragSrc = editShader(processShader("surface.frag", includes), source);
+    SurfaceVariantShader = makeShared<CShader>();
+    if (!SurfaceVariantShader->createProgram(TEXVERTSRC, surfaceFragSrc, true, true))
+        throw efmt("Failed to create Shader: {}, check hyprland logs", "surface.frag");
+
+    for (const auto& [features, _] : g_pHyprOpenGL->m_shaders->fragVariants) {
+        VariantShaders[features].Shader = SurfaceVariantShader;
     }
 }
 
