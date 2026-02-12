@@ -260,7 +260,12 @@ ShaderConfig* WindowShader::AddShader(ShaderDefinition def)
     if (def.Path != "")
     {
         std::ifstream file(def.Path);
+        if (!file.is_open())
+            throw efmt("Failed to open shader file '{}'", def.Path);
+
         std::string source = std::string(std::istreambuf_iterator(file), {});
+        if (source.empty())
+            throw efmt("Shader file '{}' is empty", def.Path);
 
         shader->CompiledShaders = SP(new ShaderHolder(source));
     }
