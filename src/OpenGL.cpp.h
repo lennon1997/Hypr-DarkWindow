@@ -38,9 +38,19 @@ static void loadShaderInclude(const std::string& filename, std::map<std::string,
 }
 
 static void processShaderIncludes(std::string& source, const std::map<std::string, std::string>& includes) {
-    for (auto it = includes.begin(); it != includes.end(); ++it) {
-        Hyprutils::String::replaceInString(source, "#include \"" + it->first + "\"", it->second);
+    bool changed = false;
+    do {
+        changed = false;
+        for (const auto& [name, content] : includes) {
+            const auto includeStmt = "#include \"" + name + "\"";
+            if (source.find(includeStmt) == std::string::npos)
+                continue;
+
+            Hyprutils::String::replaceInString(source, includeStmt, content);
+            changed = true;
+        }
     }
+    while (changed);
 }
 
 static std::string processShader(const std::string& filename, const std::map<std::string, std::string>& includes) {
