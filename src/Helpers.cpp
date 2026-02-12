@@ -253,13 +253,65 @@ ShaderHolder::ShaderHolder(const std::string& source)
             throw efmt("Failed to create Shader: {}, check hyprland logs", fragFile);
     }
 
-    auto surfaceFragSrc = editShader(processShader("surface.frag", includes), source);
-    SurfaceVariantShader = makeShared<CShader>();
-    if (!SurfaceVariantShader->createProgram(TEXVERTSRC, surfaceFragSrc, true, true))
-        throw efmt("Failed to create Shader: {}, check hyprland logs", "surface.frag");
-
     for (const auto& [features, _] : g_pHyprOpenGL->m_shaders->fragVariants) {
-        VariantShaders[features].Shader = SurfaceVariantShader;
+        auto surfaceFragSrc = loadShader("surface.frag");
+
+        Hyprutils::String::replaceInString(
+            surfaceFragSrc,
+            "#include \"get_rgb_pixel.glsl\"",
+            loadShader((features & SH_FEAT_RGBA) ? "get_rgba_pixel.glsl" : "get_rgbx_pixel.glsl")
+        );
+
+        Hyprutils::String::replaceInString(
+            surfaceFragSrc,
+            "#include \"discard.glsl\"",
+            (features & SH_FEAT_DISCARD) ? loadShader("discard.glsl") : ""
+        );
+        Hyprutils::String::replaceInString(
+            surfaceFragSrc,
+            "#include \"do_discard.glsl\"",
+            (features & SH_FEAT_DISCARD) ? loadShader("do_discard.glsl") : ""
+        );
+
+        Hyprutils::String::replaceInString(
+            surfaceFragSrc,
+            "#include \"surface_CM.glsl\"",
+            (features & SH_FEAT_CM) ? loadShader("surface_CM.glsl") : ""
+        );
+        Hyprutils::String::replaceInString(
+            surfaceFragSrc,
+            "#include \"do_CM.glsl\"",
+            (features & SH_FEAT_CM) ? loadShader("do_CM.glsl") : ""
+        );
+
+        Hyprutils::String::replaceInString(
+            surfaceFragSrc,
+            "#include \"tint.glsl\"",
+            (features & SH_FEAT_TINT) ? loadShader("tint.glsl") : ""
+        );
+        Hyprutils::String::replaceInString(
+            surfaceFragSrc,
+            "#include \"do_tint.glsl\"",
+            (features & SH_FEAT_TINT) ? loadShader("do_tint.glsl") : ""
+        );
+
+        Hyprutils::String::replaceInString(
+            surfaceFragSrc,
+            "#include \"rounding.glsl\"",
+            (features & SH_FEAT_ROUNDING) ? loadShader("rounding.glsl") : ""
+        );
+        Hyprutils::String::replaceInString(
+            surfaceFragSrc,
+            "#include \"do_rounding.glsl\"",
+            (features & SH_FEAT_ROUNDING) ? loadShader("do_rounding.glsl") : ""
+        );
+
+        processShaderIncludes(surfaceFragSrc, includes);
+        surfaceFragSrc = editShader(surfaceFragSrc, source);
+
+        VariantShaders[features].Shader = makeShared<CShader>();
+        if (!VariantShaders[features].Shader->createProgram(TEXVERTSRC, surfaceFragSrc, true, true))
+            throw efmt("Failed to create Shader: surface variant (features={}), check hyprland logs", features);
     }
 }
 
