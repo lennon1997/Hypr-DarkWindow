@@ -230,10 +230,9 @@ ShaderHolder::ShaderHolder(const std::string& source)
     Hyprutils::Utils::CScopeGuard _egl([&] { g_pHyprRenderer->unsetEGL(); });
 
     std::map<std::string, std::string> includes;
-    loadShaderInclude("rounding.glsl", includes);
-    loadShaderInclude("CM.glsl", includes);
-    loadShaderInclude("gain.glsl", includes);
-    loadShaderInclude("border.glsl", includes);
+    for (const auto& [name, _] : SHADERS) {
+        loadShaderInclude(name, includes);
+    }
 
     const auto& TEXVERTSRC = g_pHyprOpenGL->m_shaders->TEXVERTSRC;
 
